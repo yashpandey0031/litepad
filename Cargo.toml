@@ -1,0 +1,20 @@
+[package]
+name = "rustpad"
+version = "0.1.0"
+edition = "2021"
+description = "A bloat-free, fast, zero-telemetry notepad for Windows."
+authors = ["RustPad"]
+
+[dependencies]
+eframe = { version = "0.29", default-features = true }
+egui = "0.29"
+dirs = "5"
+rfd = "0.15"
+
+# A small, fast release binary. No network crates anywhere => zero telemetry.
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = true

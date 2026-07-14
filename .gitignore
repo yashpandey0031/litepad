@@ -1,0 +1,18 @@
+# Rust build artifacts
+/target/
+
+# Backup files from rustfmt
+**/*.rs.bk
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# OS-specific files
+Thumbs.db
+.DS_Store
