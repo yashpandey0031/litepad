@@ -3,11 +3,84 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>LitePad - A no bs notepad for Windows</title>
+    <title>LitePad — Fast, Bloat-Free, Zero-Telemetry Notepad for Windows</title>
     <meta
       name="description"
-      content="LitePad is a no bs , bloat-free, lightning-fast, zero-telemetry notepad for Windows. Native Rust, a single 4 MB .exe."
+      content="LitePad is a lightning-fast, bloat-free, zero-telemetry notepad for Windows. Native Rust — no Electron, no web view — a single 4 MB .exe with autosave, a notes sidebar, and dark mode."
     />
+    <meta
+      name="keywords"
+      content="LitePad, notepad, Windows notepad, lightweight notepad, fast notepad, Rust notepad, zero telemetry, bloat-free, open source notepad, notepad alternative, autosave notes, minimal text editor"
+    />
+    <meta name="author" content="Yash Pandey" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+
+    <!-- Canonical + social preview. If you deploy somewhere other than GitHub
+         Pages, update this domain (and the og:/twitter:/JSON-LD URLs below). -->
+    <link rel="canonical" href="https://yashpandey0031.github.io/litepad/" />
+
+    <!-- Open Graph (Facebook, LinkedIn, Discord, etc.) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="LitePad" />
+    <meta
+      property="og:title"
+      content="LitePad — Fast, Bloat-Free Notepad for Windows"
+    />
+    <meta
+      property="og:description"
+      content="A lightning-fast, zero-telemetry notepad for Windows. Native Rust, a single 4 MB .exe with autosave, a notes sidebar, and dark mode."
+    />
+    <meta property="og:url" content="https://yashpandey0031.github.io/litepad/" />
+    <meta
+      property="og:image"
+      content="https://yashpandey0031.github.io/litepad/icon.png"
+    />
+    <meta property="og:image:alt" content="LitePad app icon" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary" />
+    <meta
+      name="twitter:title"
+      content="LitePad — Fast, Bloat-Free Notepad for Windows"
+    />
+    <meta
+      name="twitter:description"
+      content="A lightning-fast, zero-telemetry notepad for Windows. Native Rust, a single 4 MB .exe."
+    />
+    <meta
+      name="twitter:image"
+      content="https://yashpandey0031.github.io/litepad/icon.png"
+    />
+
+    <!-- Icons -->
+    <link rel="icon" type="image/png" href="icon.png" />
+    <link rel="apple-touch-icon" href="icon.png" />
+
+    <!-- Structured data: helps search engines show a rich result -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "LitePad",
+        "operatingSystem": "Windows",
+        "applicationCategory": "UtilitiesApplication",
+        "description": "A bloat-free, lightning-fast, zero-telemetry notepad for Windows. Native Rust, a single 4 MB .exe with autosave, a notes sidebar, and dark mode.",
+        "url": "https://yashpandey0031.github.io/litepad/",
+        "image": "https://yashpandey0031.github.io/litepad/icon.png",
+        "downloadUrl": "https://github.com/yashpandey0031/litepad/releases/latest",
+        "softwareVersion": "0.1.0",
+        "fileSize": "4MB",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "author": {
+          "@type": "Person",
+          "name": "Yash Pandey",
+          "url": "https://github.com/yashpandey0031"
+        }
+      }
+    </script>
     <style>
       :root {
         --bg: #ffffff;
@@ -74,18 +147,10 @@
 
       /* ---- Logo ---- */
       .logo {
-        width: 96px;
-        height: 96px;
-        border-radius: 26px;
-        background: var(--btn-bg);
-        color: var(--btn-fg);
-        display: grid;
-        place-items: center;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
-      }
-      .logo svg {
-        width: 52px;
-        height: 52px;
+        width: 108px;
+        height: 108px;
+        display: block;
+        filter: drop-shadow(0 12px 26px rgba(0, 0, 0, 0.28));
       }
 
       h1 {
@@ -194,13 +259,8 @@
 
       @media (max-height: 560px) {
         .logo {
-          width: 68px;
-          height: 68px;
-          border-radius: 20px;
-        }
-        .logo svg {
-          width: 38px;
-          height: 38px;
+          width: 76px;
+          height: 76px;
         }
         main {
           gap: 14px;
@@ -213,22 +273,8 @@
   </head>
   <body>
     <main>
-      <!-- Logo: a rounded notepad mark -->
-      <div class="logo" aria-hidden="true">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.7"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <rect x="4" y="3" width="16" height="18" rx="3.5" />
-          <line x1="8" y1="8" x2="16" y2="8" />
-          <line x1="8" y1="12" x2="16" y2="12" />
-          <line x1="8" y1="16" x2="13" y2="16" />
-        </svg>
-      </div>
+      <!-- App icon -->
+      <img class="logo" src="icon.png" alt="LitePad icon" width="108" height="108" />
 
       <h1>LitePad<span class="dot">.</span></h1>
 

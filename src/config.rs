@@ -3,10 +3,11 @@
 use std::fs;
 
 use crate::storage::app_dir;
+use crate::theme::Theme;
 
 #[derive(Clone)]
 pub struct Config {
-    pub dark: bool,
+    pub theme: Theme,
     pub font_size: f32,
     pub font: String,
     pub sidebar_width: f32,
@@ -15,7 +16,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            dark: false,
+            theme: Theme::Light,
             font_size: 17.0,
             font: "Segoe UI".to_string(),
             sidebar_width: 264.0,
@@ -34,7 +35,7 @@ impl Config {
                 };
                 let (k, v) = (k.trim(), v.trim());
                 match k {
-                    "theme" => cfg.dark = v.eq_ignore_ascii_case("dark"),
+                    "theme" => cfg.theme = Theme::from_str(v),
                     "font_size" => {
                         if let Ok(n) = v.parse::<f32>() {
                             cfg.font_size = n.clamp(11.0, 40.0);
@@ -61,7 +62,7 @@ impl Config {
         let path = app_dir().join("config.txt");
         let text = format!(
             "theme={}\nfont_size={}\nfont={}\nsidebar_width={}\n",
-            if self.dark { "dark" } else { "light" },
+            self.theme.label().to_lowercase(),
             self.font_size,
             self.font,
             self.sidebar_width,

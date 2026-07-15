@@ -85,8 +85,8 @@ impl LitePadApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let fonts = crate::fonts::install(&cc.egui_ctx);
         let cfg = Config::load();
-        let palette = Palette::for_theme(cfg.dark);
-        theme::apply(&cc.egui_ctx, &palette, cfg.dark);
+        let palette = Palette::for_theme(cfg.theme);
+        theme::apply(&cc.egui_ctx, &palette, cfg.theme);
 
         let mut next_id = 1u64;
         let mut notes: Vec<Note> = storage::load_all()
@@ -325,8 +325,8 @@ impl LitePadApp {
 impl eframe::App for LitePadApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if self.theme_dirty {
-            self.palette = Palette::for_theme(self.cfg.dark);
-            theme::apply(ctx, &self.palette, self.cfg.dark);
+            self.palette = Palette::for_theme(self.cfg.theme);
+            theme::apply(ctx, &self.palette, self.cfg.theme);
             self.cfg.save();
             self.theme_dirty = false;
         }
@@ -430,9 +430,13 @@ impl eframe::App for LitePadApp {
 
                     // --- Right-aligned actions ---
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        let theme_label = if self.cfg.dark { "Light" } else { "Dark" };
-                        if ui.button(theme_label).on_hover_text("Toggle theme").clicked() {
-                            self.cfg.dark = !self.cfg.dark;
+                        let next_theme = self.cfg.theme.next();
+                        if ui
+                            .button(next_theme.label())
+                            .on_hover_text("Switch theme (Light \u{2192} Dark \u{2192} Brown)")
+                            .clicked()
+                        {
+                            self.cfg.theme = next_theme;
                             self.theme_dirty = true;
                         }
                         ui.separator();
@@ -891,21 +895,16 @@ fn note_card(ui: &mut egui::Ui, note: &Note, selected: bool, pal: &Palette) -> O
                         .color(sub_color),
                 );
 
-                // File location for this note (full path on hover). Kept small and dim so
-                // it reads as metadata, and truncated so a long path never widens the card.
+                // File location for this note. Kept small and dim so it reads as metadata,
+                // and truncated so a long path never widens the card. egui shows the full
+                // path as a tooltip on hover automatically when the label is truncated.
                 ui.add_space(2.0);
                 let loc = note
                     .path
                     .as_ref()
                     .map(|p| p.display().to_string())
                     .unwrap_or_else(|| "Not saved yet".to_string());
-                let loc_label = ui.add(
-                    egui::Label::new(RichText::new(&loc).size(10.5).color(sub_color))
-                        .truncate(),
-                );
-                if note.path.is_some() {
-                    loc_label.on_hover_text(&loc);
-                }
+                ui.add(egui::Label::new(RichText::new(&loc).size(10.5).color(sub_color)).truncate());
             });
         });
 

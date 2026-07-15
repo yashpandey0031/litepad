@@ -11,6 +11,10 @@ egui = "0.29"
 dirs = "5"
 rfd = "0.15"
 
+# Embeds the application icon into the Windows .exe (build-time only).
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
+
 # A small, fast release binary. No network crates anywhere => zero telemetry.
 [profile.release]
 opt-level = 3

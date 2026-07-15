@@ -1,3 +1,5 @@
+<img src="assets/icon.png" alt="LitePad" width="120" align="right" />
+
 # LitePad
 
 A bloat-free, fast, **zero-telemetry** notepad for Windows. Native Rust (egui/eframe) —
@@ -11,7 +13,8 @@ no Electron, no web view, no background services. A single ~4 MB `.exe`.
   Its font is fixed and never changes when you resize the editor text.
 - **Search** — filter notes instantly (`Ctrl+F`).
 - **Save As…** — export the current note anywhere via a native Windows dialog (`Ctrl+Shift+S`).
-- **Themes** — clean black/white, solid colors, rounded corners, no gradients.
+- **Themes** — three built-in: **Light**, **Dark**, and a warm **Brown**. Solid colors,
+  rounded corners, no gradients. The toolbar button cycles Light → Dark → Brown.
 - **Fonts** — pick from 4 real Windows fonts (Segoe UI, Arial, Georgia, Consolas), adjustable
   size (`Ctrl +` / `Ctrl -`), with **Bold / Italic / Underline** toggles applied to the editor.
 - **Clickable links** — `http(s)` URLs are highlighted; `Ctrl+Click` opens them in your browser.
