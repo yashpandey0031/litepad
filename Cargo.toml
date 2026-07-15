@@ -1,9 +1,9 @@
 [package]
-name = "rustpad"
+name = "litepad"
 version = "0.1.0"
 edition = "2021"
 description = "A bloat-free, fast, zero-telemetry notepad for Windows."
-authors = ["RustPad"]
+authors = ["LitePad"]
 
 [dependencies]
 eframe = { version = "0.29", default-features = true }

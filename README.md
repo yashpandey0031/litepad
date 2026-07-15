@@ -1,4 +1,4 @@
-# RustPad
+# LitePad
 
 A bloat-free, fast, **zero-telemetry** notepad for Windows. Native Rust (egui/eframe) —
 no Electron, no web view, no background services. A single ~4 MB `.exe`.
@@ -22,9 +22,10 @@ no Electron, no web view, no background services. A single ~4 MB `.exe`.
 
 ## Where notes live
 
-`%APPDATA%\RustPad\notes\` — one real text file per note, named after its first line.
+`%APPDATA%\LitePad\notes\` — one real text file per note, named after its first line.
 Drop your own `.txt`/`.md` files in there and they show up in the sidebar. Preferences are
-stored in `%APPDATA%\RustPad\config.txt`. The **Folder** button opens this in Explorer.
+stored in `%APPDATA%\LitePad\config.txt`. The **Folder** button opens this in Explorer.
+(Notes from an earlier `RustPad` install are migrated automatically on first launch.)
 
 ## Shortcuts
 
@@ -48,5 +49,5 @@ stored in `%APPDATA%\RustPad\config.txt`. The **Folder** button opens this in Ex
 cargo run --release
 ```
 
-The optimized binary is at `target\release\rustpad.exe` — copy it anywhere and double-click.
+The optimized binary is at `target\release\litepad.exe` — copy it anywhere and double-click.
 ```

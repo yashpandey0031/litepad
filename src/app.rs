@@ -64,7 +64,7 @@ enum Action {
     SaveAs,
 }
 
-pub struct RustPadApp {
+pub struct LitePadApp {
     notes: Vec<Note>,
     current: u64,
     next_id: u64,
@@ -81,7 +81,7 @@ pub struct RustPadApp {
     status: String,
 }
 
-impl RustPadApp {
+impl LitePadApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let fonts = crate::fonts::install(&cc.egui_ctx);
         let cfg = Config::load();
@@ -322,7 +322,7 @@ impl RustPadApp {
     }
 }
 
-impl eframe::App for RustPadApp {
+impl eframe::App for LitePadApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if self.theme_dirty {
             self.palette = Palette::for_theme(self.cfg.dark);
@@ -347,30 +347,40 @@ impl eframe::App for RustPadApp {
             )
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new("RustPad").strong().size(16.0).color(pal.text));
+                    ui.label(RichText::new("LitePad").strong().size(16.0).color(pal.text));
 
                     ui.add_space(8.0);
-                    if current_dirty {
-                        ui.add(egui::Spinner::new().size(13.0));
-                        ui.label(RichText::new("Saving\u{2026}").size(12.5).color(pal.subtle));
-                    } else {
-                        // Draw the check mark ourselves: the default UI font has no U+2713
-                        // glyph, so a literal "\u{2713}" renders as a tofu box.
-                        let (rect, _) =
-                            ui.allocate_exact_size(egui::vec2(15.0, 13.0), Sense::hover());
-                        let c = rect.center();
-                        ui.painter().add(egui::Shape::line(
-                            vec![
-                                c + egui::vec2(-4.5, 0.5),
-                                c + egui::vec2(-1.5, 3.3),
-                                c + egui::vec2(4.5, -3.4),
-                            ],
-                            Stroke::new(1.7, pal.subtle),
-                        ));
-                        ui.label(RichText::new("Saved").size(12.5).color(pal.subtle));
-                    }
+                    // Fixed-width slot so the "Saving…" spinner and "Saved" state (which are
+                    // different widths) never push the rest of the toolbar around.
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(88.0, 18.0),
+                        Layout::left_to_right(Align::Center),
+                        |ui| {
+                            if current_dirty {
+                                ui.add(egui::Spinner::new().size(13.0));
+                                ui.label(
+                                    RichText::new("Saving\u{2026}").size(12.5).color(pal.subtle),
+                                );
+                            } else {
+                                // Draw the check mark ourselves: the default UI font has no
+                                // U+2713 glyph, so a literal "\u{2713}" renders as a tofu box.
+                                let (rect, _) =
+                                    ui.allocate_exact_size(egui::vec2(15.0, 13.0), Sense::hover());
+                                let c = rect.center();
+                                ui.painter().add(egui::Shape::line(
+                                    vec![
+                                        c + egui::vec2(-4.5, 0.5),
+                                        c + egui::vec2(-1.5, 3.3),
+                                        c + egui::vec2(4.5, -3.4),
+                                    ],
+                                    Stroke::new(1.7, pal.subtle),
+                                ));
+                                ui.label(RichText::new("Saved").size(12.5).color(pal.subtle));
+                            }
+                        },
+                    );
 
-                    ui.add_space(10.0);
+                    ui.add_space(2.0);
                     ui.separator();
 
                     // --- Editor font + inline formatting (applies to the SELECTION) ---
@@ -426,8 +436,18 @@ impl eframe::App for RustPadApp {
                             self.theme_dirty = true;
                         }
                         ui.separator();
+                        // A real button (with a background) like Folder / Save As; filled
+                        // with the accent while the shortcuts panel is open.
+                        let mut shortcuts_btn = egui::Button::new(if self.show_shortcuts {
+                            RichText::new("Shortcuts").color(pal.accent_text)
+                        } else {
+                            RichText::new("Shortcuts")
+                        });
+                        if self.show_shortcuts {
+                            shortcuts_btn = shortcuts_btn.fill(pal.accent);
+                        }
                         if ui
-                            .selectable_label(self.show_shortcuts, "Shortcuts")
+                            .add(shortcuts_btn)
                             .on_hover_text("Keyboard shortcuts")
                             .clicked()
                         {
@@ -521,6 +541,9 @@ impl eframe::App for RustPadApp {
 
                 egui::ScrollArea::vertical()
                     .auto_shrink([false; 2])
+                    .scroll_bar_visibility(
+                        egui::scroll_area::ScrollBarVisibility::AlwaysHidden,
+                    )
                     .show(ui, |ui| {
                         let mut shown = 0;
                         for &i in &order {
@@ -867,6 +890,22 @@ fn note_card(ui: &mut egui::Ui, note: &Note, selected: bool, pal: &Palette) -> O
                         .size(11.0)
                         .color(sub_color),
                 );
+
+                // File location for this note (full path on hover). Kept small and dim so
+                // it reads as metadata, and truncated so a long path never widens the card.
+                ui.add_space(2.0);
+                let loc = note
+                    .path
+                    .as_ref()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|| "Not saved yet".to_string());
+                let loc_label = ui.add(
+                    egui::Label::new(RichText::new(&loc).size(10.5).color(sub_color))
+                        .truncate(),
+                );
+                if note.path.is_some() {
+                    loc_label.on_hover_text(&loc);
+                }
             });
         });
 

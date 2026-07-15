@@ -8,20 +8,20 @@ mod markup;
 mod storage;
 mod theme;
 
-use app::RustPadApp;
+use app::LitePadApp;
 
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1040.0, 700.0])
             .with_min_inner_size([620.0, 420.0])
-            .with_title("RustPad"),
+            .with_title("LitePad"),
         ..Default::default()
     };
 
     eframe::run_native(
-        "RustPad",
+        "LitePad",
         options,
-        Box::new(|cc| Ok(Box::new(RustPadApp::new(cc)))),
+        Box::new(|cc| Ok(Box::new(LitePadApp::new(cc)))),
     )
 }

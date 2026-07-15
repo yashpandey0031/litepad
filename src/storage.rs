@@ -7,20 +7,47 @@ use std::time::SystemTime;
 /// Extensions we treat as editable plain-text notes.
 const TEXT_EXTS: &[&str] = &["txt", "md", "markdown", "log", "text", "conf", "csv"];
 
-/// `%APPDATA%\RustPad\notes` (created on demand).
+/// `%APPDATA%\LitePad\notes` (created on demand).
 pub fn notes_dir() -> PathBuf {
-    let base = dirs::data_dir().unwrap_or_else(|| PathBuf::from("."));
-    let dir = base.join("RustPad").join("notes");
+    let dir = app_dir().join("notes");
     let _ = fs::create_dir_all(&dir);
     dir
 }
 
-/// `%APPDATA%\RustPad` — root for config etc.
+/// `%APPDATA%\LitePad` — root for config etc.
 pub fn app_dir() -> PathBuf {
     let base = dirs::data_dir().unwrap_or_else(|| PathBuf::from("."));
-    let dir = base.join("RustPad");
+    let dir = base.join("LitePad");
     let _ = fs::create_dir_all(&dir);
+
+    // One-time migration: carry notes/config over from the old "RustPad" branding so
+    // nobody loses their notes on update. We *copy* (rather than rename the folder,
+    // which fails if Explorer or another process has it open) and record a marker so
+    // this runs exactly once — deleting a migrated note won't resurrect it next launch.
+    let marker = dir.join(".migrated");
+    if !marker.exists() {
+        let legacy = base.join("RustPad");
+        if legacy.exists() {
+            copy_tree(&legacy, &dir);
+        }
+        let _ = fs::write(&marker, b"migrated from RustPad\n");
+    }
     dir
+}
+
+/// Recursively copy `src` into `dst`, never overwriting a file that already exists.
+fn copy_tree(src: &Path, dst: &Path) {
+    let Ok(rd) = fs::read_dir(src) else { return };
+    for entry in rd.flatten() {
+        let from = entry.path();
+        let to = dst.join(entry.file_name());
+        if from.is_dir() {
+            let _ = fs::create_dir_all(&to);
+            copy_tree(&from, &to);
+        } else if !to.exists() {
+            let _ = fs::copy(&from, &to);
+        }
+    }
 }
 
 pub struct LoadedNote {
