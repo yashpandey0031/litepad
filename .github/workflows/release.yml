@@ -1,0 +1,41 @@
+name: Release
+
+# Publishes a GitHub Release with the installer whenever you push a version tag,
+# e.g.:  git tag v0.1.0 && git push origin v0.1.0
+# After this runs, https://github.com/yashpandey0031/litepad/releases/latest
+# (the website Download button target) serves LitePad-Setup.exe.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\litepad.iss'
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: LitePad ${{ github.ref_name }}
+          draft: false
+          files: |
+            dist/LitePad-Setup.exe
+            target/release/litepad.exe

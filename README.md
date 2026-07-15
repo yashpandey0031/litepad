@@ -92,6 +92,10 @@ Most "lightweight" notepads today ship an entire browser engine. LitePad is a na
 immediate-mode GUI app in pure Rust: one small binary, instant startup, zero telemetry,
 and your notes stay as plain-text files you fully own.
 
+## License
+
+Released under the [MIT License](LICENSE). © 2026 Yash Pandey.
+
 ---
 
 <div align="center">
