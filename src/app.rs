@@ -354,7 +354,20 @@ impl eframe::App for RustPadApp {
                         ui.add(egui::Spinner::new().size(13.0));
                         ui.label(RichText::new("Saving\u{2026}").size(12.5).color(pal.subtle));
                     } else {
-                        ui.label(RichText::new("\u{2713} Saved").size(12.5).color(pal.subtle));
+                        // Draw the check mark ourselves: the default UI font has no U+2713
+                        // glyph, so a literal "\u{2713}" renders as a tofu box.
+                        let (rect, _) =
+                            ui.allocate_exact_size(egui::vec2(15.0, 13.0), Sense::hover());
+                        let c = rect.center();
+                        ui.painter().add(egui::Shape::line(
+                            vec![
+                                c + egui::vec2(-4.5, 0.5),
+                                c + egui::vec2(-1.5, 3.3),
+                                c + egui::vec2(4.5, -3.4),
+                            ],
+                            Stroke::new(1.7, pal.subtle),
+                        ));
+                        ui.label(RichText::new("Saved").size(12.5).color(pal.subtle));
                     }
 
                     ui.add_space(10.0);
@@ -550,20 +563,11 @@ impl eframe::App for RustPadApp {
                 let fid_bold = FontId::new(self.cfg.font_size, self.fonts[fi].bold.clone());
                 let text_color = pal.text;
                 let link_color = pal.link;
-                let marker_color = pal.subtle;
 
                 let mut layouter = move |ui: &egui::Ui, text: &str, wrap_width: f32| {
                     let mut job = LayoutJob::default();
                     job.wrap.max_width = wrap_width;
-                    build_job(
-                        &mut job,
-                        text,
-                        &fid_reg,
-                        &fid_bold,
-                        text_color,
-                        link_color,
-                        marker_color,
-                    );
+                    build_job(&mut job, text, &fid_reg, &fid_bold, text_color, link_color);
                     ui.fonts(|f| f.layout_job(job))
                 };
 
@@ -752,7 +756,7 @@ fn format_for(
     }
 }
 
-/// Lay out the editor text: per-span bold/italic/underline, dimmed markers, colored URLs.
+/// Lay out the editor text: per-span bold/italic/underline, hidden markers, colored URLs.
 fn build_job(
     job: &mut LayoutJob,
     text: &str,
@@ -760,18 +764,21 @@ fn build_job(
     fid_bold: &FontId,
     color: egui::Color32,
     link_color: egui::Color32,
-    marker_color: egui::Color32,
 ) {
     for seg in markup::parse(text) {
         let s = &text[seg.start..seg.end];
 
         if seg.marker {
+            // Hidden: the `**`/`*`/`__` characters stay in the layout so the galley's
+            // char indices keep lining up with the underlying text buffer (cursor,
+            // selection and editing all depend on that), but we render them fully
+            // transparent at a near-zero size so they take no visible space.
             job.append(
                 s,
                 0.0,
                 TextFormat {
-                    font_id: fid_reg.clone(),
-                    color: marker_color,
+                    font_id: FontId::new(0.1, fid_reg.family.clone()),
+                    color: egui::Color32::TRANSPARENT,
                     ..Default::default()
                 },
             );

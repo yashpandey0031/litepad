@@ -29,7 +29,8 @@ pub struct Style {
 }
 
 /// A run of text sharing one style. `marker` runs are the `**`/`*`/`__` characters
-/// themselves, which we render dimmed rather than hiding (so editing stays predictable).
+/// themselves, which the editor renders invisibly (transparent, near-zero width) so the
+/// styled text reads cleanly while the markers stay in the file for save/load round-trips.
 pub struct Seg {
     pub start: usize, // byte offsets into the full text
     pub end: usize,
