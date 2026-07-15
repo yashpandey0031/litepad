@@ -36,6 +36,15 @@ jobs:
         with:
           name: LitePad ${{ github.ref_name }}
           draft: false
+          body: |
+            ## Downloads
+
+            | File | What it is |
+            | --- | --- |
+            | **LitePad-Setup.exe** | ⭐ **Recommended** — the installer. Sets up LitePad with Start-menu & desktop shortcuts and an uninstaller. |
+            | **litepad.exe** | Portable — run it directly, no installation. |
+
+            > On first launch Windows SmartScreen may warn (the app is unsigned) — choose **More info → Run anyway**.
           files: |
             dist/LitePad-Setup.exe
             target/release/litepad.exe
