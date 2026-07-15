@@ -127,21 +127,24 @@
           system-ui,
           -apple-system,
           sans-serif;
-        height: 100vh;
-        overflow: hidden;
-        display: grid;
-        place-items: center;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
         padding: 24px;
         -webkit-font-smoothing: antialiased;
       }
 
+      /* Hero fills the first screen; the preview scrolls in just below. */
       main {
         width: 100%;
         max-width: 560px;
+        min-height: calc(100vh - 48px);
         text-align: center;
         display: flex;
         flex-direction: column;
         align-items: center;
+        justify-content: center;
         gap: 22px;
       }
 
@@ -247,14 +250,60 @@
         height: 15px;
       }
 
+      /* ---- Preview ---- */
+      .preview {
+        width: 100%;
+        max-width: 1040px;
+        text-align: center;
+        padding: 8px 0 32px;
+      }
+      .preview-label {
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 20px;
+      }
+      .shots {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: center;
+        align-items: flex-start;
+      }
+      .shot {
+        flex: 1 1 280px;
+        max-width: 320px;
+        margin: 0;
+      }
+      .shot img {
+        width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+        transition:
+          transform 0.28s cubic-bezier(0.2, 0.7, 0.2, 1),
+          box-shadow 0.28s ease;
+      }
+      .shot:hover img {
+        transform: translateY(-8px) scale(1.035);
+        box-shadow: 0 22px 46px rgba(0, 0, 0, 0.34);
+      }
+      .shot figcaption {
+        margin-top: 11px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
       footer {
-        position: fixed;
-        bottom: 18px;
-        left: 0;
-        right: 0;
         text-align: center;
         font-size: 0.78rem;
         color: var(--muted);
+        padding: 6px 0 28px;
       }
 
       @media (max-height: 560px) {
@@ -342,6 +391,37 @@
         </a>
       </div>
     </main>
+
+    <!-- Preview screenshots (one per theme) with a lift-on-hover animation -->
+    <section class="preview" aria-label="Preview">
+      <p class="preview-label">Preview</p>
+      <div class="shots">
+        <figure class="shot">
+          <img
+            src="preview-light.png"
+            alt="LitePad running in the Light theme"
+            loading="lazy"
+          />
+          <figcaption>Light</figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="preview-dark.png"
+            alt="LitePad running in the Dark theme"
+            loading="lazy"
+          />
+          <figcaption>Dark</figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="preview-brown.png"
+            alt="LitePad running in the Brown theme"
+            loading="lazy"
+          />
+          <figcaption>Brown</figcaption>
+        </figure>
+      </div>
+    </section>
 
     <footer>Made with Rust 🦀</footer>
 
