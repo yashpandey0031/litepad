@@ -10,6 +10,7 @@ use crate::fonts::FontChoice;
 use crate::markup::{self, Fmt, Style};
 use crate::storage;
 use crate::theme::{self, Palette};
+use crate::updates::UpdateInfo;
 
 /// Save this long after the last keystroke.
 const AUTOSAVE_DEBOUNCE: Duration = Duration::from_millis(700);
@@ -62,6 +63,8 @@ enum Action {
     Delete(u64),
     RevealFolder,
     SaveAs,
+    CheckUpdates,
+    InstallUpdate,
 }
 
 pub struct LitePadApp {
@@ -79,6 +82,9 @@ pub struct LitePadApp {
     pending_delete: Option<u64>,
     show_shortcuts: bool,
     status: String,
+    update_info: UpdateInfo,
+    show_update_window: bool,
+    downloading_update: bool,
 }
 
 impl LitePadApp {
@@ -118,6 +124,7 @@ impl LitePadApp {
         }
 
         let current = notes[0].id;
+        let update_info = UpdateInfo::load();
 
         Self {
             notes,
@@ -134,6 +141,9 @@ impl LitePadApp {
             pending_delete: None,
             show_shortcuts: false,
             status: "Ready".to_string(),
+            update_info,
+            show_update_window: false,
+            downloading_update: false,
         }
     }
 
@@ -440,6 +450,36 @@ impl eframe::App for LitePadApp {
                             self.theme_dirty = true;
                         }
                         ui.separator();
+
+                        // Update button - show with accent color if update available
+                        let update_btn_text = if self.update_info.available {
+                            RichText::new("Update").color(pal.accent_text)
+                        } else if self.update_info.checking {
+                            RichText::new("Checking\u{2026}")
+                        } else {
+                            RichText::new("Update")
+                        };
+                        let mut update_btn = egui::Button::new(update_btn_text);
+                        if self.update_info.available {
+                            update_btn = update_btn.fill(pal.accent);
+                        }
+                        if ui
+                            .add(update_btn)
+                            .on_hover_text(if self.update_info.available {
+                                "New version available"
+                            } else {
+                                "Check for updates"
+                            })
+                            .clicked()
+                        {
+                            if self.update_info.available {
+                                self.show_update_window = true;
+                            } else {
+                                action = Some(Action::CheckUpdates);
+                            }
+                        }
+
+                        ui.separator();
                         // A real button (with a background) like Folder / Save As; filled
                         // with the accent while the shortcuts panel is open.
                         let mut shortcuts_btn = egui::Button::new(if self.show_shortcuts {
@@ -728,6 +768,58 @@ impl eframe::App for LitePadApp {
             }
         }
 
+        // ---- Update available window ----------------------------------------
+        if self.show_update_window {
+            let mut open = true;
+            egui::Window::new("Update Available")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .open(&mut open)
+                .show(ctx, |ui| {
+                    ui.label(format!(
+                        "Version {} is available",
+                        self.update_info.latest_version
+                    ));
+                    ui.label(
+                        RichText::new(format!(
+                            "You are currently on version {}",
+                            self.update_info.current_version
+                        ))
+                        .size(12.0)
+                        .color(pal.subtle),
+                    );
+                    ui.add_space(10.0);
+
+                    if self.downloading_update {
+                        ui.add(egui::Spinner::new().size(16.0));
+                        ui.label("Downloading update\u{2026}");
+                    } else {
+                        ui.horizontal(|ui| {
+                            if ui.button("Cancel").clicked() {
+                                self.show_update_window = false;
+                            }
+                            if ui
+                                .add(
+                                    egui::Button::new(
+                                        RichText::new("Download & Install")
+                                            .color(egui::Color32::WHITE),
+                                    )
+                                    .fill(pal.accent),
+                                )
+                                .clicked()
+                            {
+                                action = Some(Action::InstallUpdate);
+                                self.downloading_update = true;
+                            }
+                        });
+                    }
+                });
+            if !open && !self.downloading_update {
+                self.show_update_window = false;
+            }
+        }
+
         // ---- Apply deferred actions ----------------------------------------
         match action {
             Some(Action::New) => self.new_note(),
@@ -742,6 +834,36 @@ impl eframe::App for LitePadApp {
             Some(Action::RevealFolder) => {
                 let dir = storage::notes_dir();
                 let _ = std::process::Command::new("explorer").arg(dir).spawn();
+            }
+            Some(Action::CheckUpdates) => {
+                self.status = "Checking for updates\u{2026}".to_string();
+                self.update_info.checking = true;
+                let ctx = ctx.clone();
+                tokio::spawn(async move {
+                    match crate::updates::check_for_updates().await {
+                        Ok(_info) => {
+                            ctx.request_repaint();
+                        }
+                        Err(e) => {
+                            eprintln!("Update check error: {}", e);
+                        }
+                    }
+                });
+            }
+            Some(Action::InstallUpdate) => {
+                let url = self.update_info.download_url.clone();
+                tokio::spawn(async move {
+                    match crate::updates::download_update(&url).await {
+                        Ok(path) => {
+                            if let Err(e) = crate::updates::install_update(&path) {
+                                eprintln!("Update install error: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Download error: {}", e);
+                        }
+                    }
+                });
             }
             None => {}
         }

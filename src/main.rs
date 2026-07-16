@@ -7,6 +7,7 @@ mod fonts;
 mod markup;
 mod storage;
 mod theme;
+mod updates;
 
 use app::LitePadApp;
 
