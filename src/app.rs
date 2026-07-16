@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
+use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant, SystemTime};
 
 use egui::text::{CCursor, CCursorRange, LayoutJob};
@@ -10,7 +11,7 @@ use crate::fonts::FontChoice;
 use crate::markup::{self, Fmt, Style};
 use crate::storage;
 use crate::theme::{self, Palette};
-use crate::updates::UpdateInfo;
+use crate::updates::{self, UpdateMsg};
 
 /// Save this long after the last keystroke.
 const AUTOSAVE_DEBOUNCE: Duration = Duration::from_millis(700);
@@ -64,7 +65,18 @@ enum Action {
     RevealFolder,
     SaveAs,
     CheckUpdates,
-    InstallUpdate,
+    DownloadUpdate(String),
+}
+
+/// Where the (entirely user-initiated) update check has got to.
+enum UpdateState {
+    /// Nothing asked for yet — LitePad has not touched the network.
+    Idle,
+    Checking,
+    UpToDate,
+    Available { version: String, url: String },
+    Downloading,
+    Failed(String),
 }
 
 pub struct LitePadApp {
@@ -82,9 +94,9 @@ pub struct LitePadApp {
     pending_delete: Option<u64>,
     show_shortcuts: bool,
     status: String,
-    update_info: UpdateInfo,
+    update: UpdateState,
+    update_rx: Option<Receiver<UpdateMsg>>,
     show_update_window: bool,
-    downloading_update: bool,
 }
 
 impl LitePadApp {
@@ -124,7 +136,6 @@ impl LitePadApp {
         }
 
         let current = notes[0].id;
-        let update_info = UpdateInfo::load();
 
         Self {
             notes,
@@ -141,9 +152,9 @@ impl LitePadApp {
             pending_delete: None,
             show_shortcuts: false,
             status: "Ready".to_string(),
-            update_info,
+            update: UpdateState::Idle,
+            update_rx: None,
             show_update_window: false,
-            downloading_update: false,
         }
     }
 
@@ -283,6 +294,58 @@ impl LitePadApp {
         self.focus_editor = true;
     }
 
+    /// Run one blocking update step off the UI thread, waking the UI when it lands.
+    fn spawn_update_worker(
+        &self,
+        ctx: &egui::Context,
+        work: impl FnOnce(std::sync::mpsc::Sender<UpdateMsg>) + Send + 'static,
+    ) -> Receiver<UpdateMsg> {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let ctx = ctx.clone();
+        std::thread::spawn(move || {
+            work(tx);
+            ctx.request_repaint();
+        });
+        rx
+    }
+
+    /// Drain whatever the update worker sent back. Returns true once it's done.
+    fn poll_update(&mut self, ctx: &egui::Context) {
+        let Some(rx) = &self.update_rx else { return };
+        let Ok(msg) = rx.try_recv() else { return };
+        self.update_rx = None;
+
+        match msg {
+            UpdateMsg::UpToDate => {
+                self.update = UpdateState::UpToDate;
+                self.status = format!("LitePad {} is up to date", updates::CURRENT_VERSION);
+            }
+            UpdateMsg::Available { version, url } => {
+                self.status = format!("LitePad {version} is available");
+                self.update = UpdateState::Available { version, url };
+                self.show_update_window = true;
+            }
+            UpdateMsg::Downloaded(path) => match updates::run_installer(&path) {
+                Ok(()) => {
+                    // The installer cannot replace a running .exe, so leave promptly —
+                    // but not before the notes are on disk.
+                    self.save_all_dirty();
+                    self.cfg.save();
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+                Err(e) => {
+                    self.status = e.clone();
+                    self.update = UpdateState::Failed(e);
+                }
+            },
+            UpdateMsg::Failed(e) => {
+                self.status = e.clone();
+                self.update = UpdateState::Failed(e);
+                self.show_update_window = false;
+            }
+        }
+    }
+
     fn handle_shortcuts(&mut self, ctx: &egui::Context) -> Option<Action> {
         let mut action = None;
         let mut fmt = None;
@@ -340,6 +403,8 @@ impl eframe::App for LitePadApp {
             self.cfg.save();
             self.theme_dirty = false;
         }
+
+        self.poll_update(ctx);
 
         let mut action = self.handle_shortcuts(ctx);
         let pal = self.palette;
@@ -451,31 +516,39 @@ impl eframe::App for LitePadApp {
                         }
                         ui.separator();
 
-                        // Update button - show with accent color if update available
-                        let update_btn_text = if self.update_info.available {
-                            RichText::new("Update").color(pal.accent_text)
-                        } else if self.update_info.checking {
-                            RichText::new("Checking\u{2026}")
-                        } else {
-                            RichText::new("Update")
-                        };
-                        let mut update_btn = egui::Button::new(update_btn_text);
-                        if self.update_info.available {
-                            update_btn = update_btn.fill(pal.accent);
-                        }
-                        if ui
-                            .add(update_btn)
-                            .on_hover_text(if self.update_info.available {
-                                "New version available"
-                            } else {
-                                "Check for updates"
-                            })
-                            .clicked()
-                        {
-                            if self.update_info.available {
-                                self.show_update_window = true;
-                            } else {
-                                action = Some(Action::CheckUpdates);
+                        // Update: idle until clicked — LitePad never checks on its own.
+                        match &self.update {
+                            UpdateState::Checking | UpdateState::Downloading => {
+                                ui.add(egui::Spinner::new().size(13.0));
+                                ui.label(RichText::new("Checking\u{2026}").size(12.5).color(pal.subtle));
+                            }
+                            UpdateState::Available { version, .. } => {
+                                let hint = format!("LitePad {version} is available");
+                                if ui
+                                    .add(
+                                        egui::Button::new(
+                                            RichText::new("Update").color(pal.accent_text),
+                                        )
+                                        .fill(pal.accent),
+                                    )
+                                    .on_hover_text(hint)
+                                    .clicked()
+                                {
+                                    self.show_update_window = true;
+                                }
+                            }
+                            UpdateState::Idle | UpdateState::UpToDate | UpdateState::Failed(_) => {
+                                let hint = match &self.update {
+                                    UpdateState::UpToDate => format!(
+                                        "LitePad {} is up to date",
+                                        updates::CURRENT_VERSION
+                                    ),
+                                    UpdateState::Failed(e) => format!("{e}\n\nClick to try again"),
+                                    _ => "Check GitHub for a newer version".to_string(),
+                                };
+                                if ui.button("Update").on_hover_text(hint).clicked() {
+                                    action = Some(Action::CheckUpdates);
+                                }
                             }
                         }
 
@@ -770,52 +843,66 @@ impl eframe::App for LitePadApp {
 
         // ---- Update available window ----------------------------------------
         if self.show_update_window {
+            let downloading = matches!(self.update, UpdateState::Downloading);
             let mut open = true;
-            egui::Window::new("Update Available")
+            egui::Window::new("Update LitePad")
                 .collapsible(false)
                 .resizable(false)
                 .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
                 .open(&mut open)
                 .show(ctx, |ui| {
-                    ui.label(format!(
-                        "Version {} is available",
-                        self.update_info.latest_version
-                    ));
-                    ui.label(
-                        RichText::new(format!(
-                            "You are currently on version {}",
-                            self.update_info.current_version
-                        ))
-                        .size(12.0)
-                        .color(pal.subtle),
-                    );
-                    ui.add_space(10.0);
-
-                    if self.downloading_update {
-                        ui.add(egui::Spinner::new().size(16.0));
-                        ui.label("Downloading update\u{2026}");
-                    } else {
+                    if let UpdateState::Available { version, url } = &self.update {
+                        let url = url.clone();
+                        ui.label(
+                            RichText::new(format!("LitePad {version} is available"))
+                                .strong()
+                                .size(15.0)
+                                .color(pal.text),
+                        );
+                        ui.add_space(2.0);
+                        ui.label(
+                            RichText::new(format!(
+                                "You have {}. Your notes are not touched by the update.",
+                                updates::CURRENT_VERSION
+                            ))
+                            .size(12.0)
+                            .color(pal.subtle),
+                        );
+                        ui.add_space(10.0);
                         ui.horizontal(|ui| {
-                            if ui.button("Cancel").clicked() {
+                            if ui.button("Not now").clicked() {
                                 self.show_update_window = false;
                             }
                             if ui
                                 .add(
                                     egui::Button::new(
-                                        RichText::new("Download & Install")
-                                            .color(egui::Color32::WHITE),
+                                        RichText::new("Download & install").color(pal.accent_text),
                                     )
                                     .fill(pal.accent),
                                 )
+                                .on_hover_text("Downloads the installer and opens it")
                                 .clicked()
                             {
-                                action = Some(Action::InstallUpdate);
-                                self.downloading_update = true;
+                                action = Some(Action::DownloadUpdate(url));
                             }
                         });
+                    } else if downloading {
+                        ui.horizontal(|ui| {
+                            ui.add(egui::Spinner::new().size(15.0));
+                            ui.label(
+                                RichText::new("Downloading the installer\u{2026}").color(pal.text),
+                            );
+                        });
+                        ui.add_space(2.0);
+                        ui.label(
+                            RichText::new("LitePad will save your notes and close so the installer can run.")
+                                .size(12.0)
+                                .color(pal.subtle),
+                        );
                     }
                 });
-            if !open && !self.downloading_update {
+            // Don't let the user dismiss the window mid-download; we're about to exit.
+            if !open && !downloading {
                 self.show_update_window = false;
             }
         }
@@ -837,33 +924,14 @@ impl eframe::App for LitePadApp {
             }
             Some(Action::CheckUpdates) => {
                 self.status = "Checking for updates\u{2026}".to_string();
-                self.update_info.checking = true;
-                let ctx = ctx.clone();
-                tokio::spawn(async move {
-                    match crate::updates::check_for_updates().await {
-                        Ok(_info) => {
-                            ctx.request_repaint();
-                        }
-                        Err(e) => {
-                            eprintln!("Update check error: {}", e);
-                        }
-                    }
-                });
+                self.update = UpdateState::Checking;
+                self.update_rx = Some(self.spawn_update_worker(ctx, updates::check));
             }
-            Some(Action::InstallUpdate) => {
-                let url = self.update_info.download_url.clone();
-                tokio::spawn(async move {
-                    match crate::updates::download_update(&url).await {
-                        Ok(path) => {
-                            if let Err(e) = crate::updates::install_update(&path) {
-                                eprintln!("Update install error: {}", e);
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("Download error: {}", e);
-                        }
-                    }
-                });
+            Some(Action::DownloadUpdate(url)) => {
+                self.status = "Downloading the installer\u{2026}".to_string();
+                self.update = UpdateState::Downloading;
+                self.update_rx =
+                    Some(self.spawn_update_worker(ctx, move |tx| updates::download(url, tx)));
             }
             None => {}
         }

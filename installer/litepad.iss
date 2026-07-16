@@ -6,7 +6,11 @@
 ; when you type "LitePad". It also registers an uninstaller (Apps & features).
 
 #define AppName "LitePad"
-#define AppVersion "0.1.0"
+; Passed in by the release workflow (/DAppVersion=x.y.z) straight from Cargo.toml,
+; so the version lives in exactly one place. This fallback is for local builds only.
+#ifndef AppVersion
+  #define AppVersion "0.0.0"
+#endif
 #define AppPublisher "Yash Pandey"
 #define AppExeName "litepad.exe"
 #define AppURL "https://github.com/yashpandey0031/litepad"

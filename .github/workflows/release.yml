@@ -19,17 +19,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The in-app updater compares the compiled-in CARGO_PKG_VERSION against this
+      # tag. If they disagree, every user gets an endless "update available" prompt
+      # for a build they already have — so refuse to release rather than ship that.
+      - name: Check the tag matches Cargo.toml
+        id: version
+        shell: pwsh
+        run: |
+          $cargo = (Select-String -Path Cargo.toml -Pattern '^version\s*=\s*"(.+)"').Matches[0].Groups[1].Value
+          $tag = "${{ github.ref_name }}" -replace '^v', ''
+          if ($cargo -ne $tag) {
+            throw "Tag $tag does not match Cargo.toml version $cargo. Bump 'version' in Cargo.toml, commit, then retag."
+          }
+          "version=$cargo" >> $env:GITHUB_OUTPUT
+          Write-Host "Releasing LitePad $cargo"
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
       - name: Build release binary
         run: cargo build --release
 
+      - name: Run tests
+        run: cargo test --release
+
       - name: Install Inno Setup
         run: choco install innosetup -y --no-progress
 
       - name: Build installer
-        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\litepad.iss'
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=${{ steps.version.outputs.version }} installer\litepad.iss'
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2

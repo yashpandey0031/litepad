@@ -1,6 +1,6 @@
 [package]
 name = "litepad"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "A bloat-free, fast, zero-telemetry notepad for Windows."
 authors = ["Yash Pandey"]
@@ -12,10 +12,14 @@ eframe = { version = "0.29", default-features = true }
 egui = "0.29"
 dirs = "5"
 rfd = "0.15"
-reqwest = { version = "0.11", features = ["json"] }
-tokio = { version = "1", features = ["rt-multi-thread"] }
-serde_json = "1.0"
-semver = "1.0"
+
+# The *only* network code in LitePad, and it runs solely when the user clicks
+# "Check for updates" — see src/updates.rs. Blocking, so no async runtime tags
+# along; native-tls so Windows' own schannel does the TLS rather than us shipping
+# a second crypto stack (rustls costs ~1.3 MB of binary, schannel costs ~0).
+ureq = { version = "2", default-features = false, features = ["json", "native-tls", "gzip"] }
+native-tls = "0.2"
+serde_json = "1"
 
 # Embeds the application icon into the Windows .exe (build-time only).
 [target.'cfg(windows)'.build-dependencies]

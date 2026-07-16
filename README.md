@@ -51,7 +51,11 @@ Double-click and you're writing.
 - **Standard editing** - copy / cut / paste / select-all / undo / redo (native `Ctrl+C/X/V/A/Z`).
 - **Shortcuts panel** - click **Shortcuts** in the toolbar for the full list.
 - **Plain-text files** - reads & writes `.txt`, `.md`, `.markdown`, `.log`, `.csv`, `.conf`.
-- **No networking** - there is no network code in the project *at all*. It never phones home.
+- **Never phones home** - LitePad only touches the network when *you* click **Update**, which
+  asks GitHub for the latest release and nothing else. No startup check, no background traffic,
+  no analytics, no accounts. Your notes never leave your machine.
+- **Update** - click **Update** in the toolbar to check for a new version; if there is one,
+  LitePad downloads the installer and hands over to it. Your notes are untouched.
 
 ## Where notes live
 
