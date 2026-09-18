@@ -1,3 +1,5 @@
+<h1> This project is no longer maintained as the native windows notepad has the auto save feature now</h1>
+
 <div align="center">
 
 <img src="assets/icon.png" alt="LitePad" width="128" />
